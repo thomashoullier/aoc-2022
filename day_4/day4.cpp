@@ -58,9 +58,16 @@ bool inter_contain_p (const range &range1, const range &range2) {
   return (range_contains_p(range1, range2) or range_contains_p(range2, range1));
 }
 
-bool pair_has_overlap (const elf_pair &pair) {
+bool pair_has_contain (const elf_pair &pair) {
 /* Does the provided pair contain section ID ranges overlap? */
   return inter_contain_p(pair.first, pair.second);
+}
+
+/*** Solving part 2 ***/
+bool pair_has_overlap (const elf_pair &pair) {
+  auto range1 = pair.first;
+  auto range2 = pair.second;
+  return ((range1.first <= range2.second) and (range1.second >= range2.first));
 }
 
 int main (int argc, char *argv[]) {
@@ -76,8 +83,15 @@ int main (int argc, char *argv[]) {
 
   pad range_pairs = read_from_file(input);
 
-  /* Count the number of occurences of overlaps */
+  /* Count the number of occurences of full containment */
+  auto contain_count = std::count_if(range_pairs.begin(), range_pairs.end(),
+                                     pair_has_contain);
+  std::cout << "Number of pairs with full containment: "
+            << contain_count << std::endl;
+
+  /* Count the number of occurences of overlap */
   auto overlap_count = std::count_if(range_pairs.begin(), range_pairs.end(),
                                      pair_has_overlap);
-  std::cout << "Number of overlapping ranges: " << overlap_count << std::endl;
+  std::cout << "Number of pairs with overlap: "
+            << overlap_count << std::endl;
 }
