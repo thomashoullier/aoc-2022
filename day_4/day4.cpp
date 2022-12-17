@@ -11,6 +11,8 @@ typedef std::pair<int, int> range; // Individual range assigned to an elf.
 typedef std::pair<range, range> elf_pair; // Ranges assigned to a pair of elves.
 typedef std::vector<elf_pair> pad; // The complete input list.
 
+
+/*** File parsing ***/
 range parse_range (const std::string &range_str) {
 /* Parse a single elf's range */
   // Split the string around the hyphen
@@ -44,6 +46,23 @@ pad read_from_file (std::ifstream &input) {
   return range_pairs;
 }
 
+/*** Solving part 1 ***/
+bool range_contains_p (const range &container, const range &included) {
+/* Is the provided range included in the container range? */
+  return ((container.first <= included.first) and
+          (container.second >= included.second));
+}
+
+bool inter_contain_p (const range &range1, const range &range2) {
+/* Does range1 contain range2 or range2 contain range1? */
+  return (range_contains_p(range1, range2) or range_contains_p(range2, range1));
+}
+
+bool pair_has_overlap (const elf_pair &pair) {
+/* Does the provided pair contain section ID ranges overlap? */
+  return inter_contain_p(pair.first, pair.second);
+}
+
 int main (int argc, char *argv[]) {
   std::cout << "# Day 4 #" << std::endl;
 
@@ -56,4 +75,9 @@ int main (int argc, char *argv[]) {
   std::ifstream input(argv[1]);
 
   pad range_pairs = read_from_file(input);
+
+  /* Count the number of occurences of overlaps */
+  auto overlap_count = std::count_if(range_pairs.begin(), range_pairs.end(),
+                                     pair_has_overlap);
+  std::cout << "Number of overlapping ranges: " << overlap_count << std::endl;
 }
