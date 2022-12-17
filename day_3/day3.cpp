@@ -8,6 +8,7 @@
 #include <utility>
 
 typedef std::vector<std::string> strvec;
+typedef std::vector<strvec> groups;
 
 strvec read_from_file (std::ifstream &input) {
 /* Read text file into a vector of strings. */
@@ -63,6 +64,34 @@ int char_to_priority (const char &chr) {
   return prio;
 }
 
+groups group_elves (const strvec &lines) {
+/* Group the elves by 3 */
+  groups elves_groups;
+  int lines_size = lines.size();
+  for (int i=0; i < lines_size; i=i+3) {
+    strvec cur_group;
+    cur_group.push_back(lines.at(i));
+    cur_group.push_back(lines.at(i+1));
+    cur_group.push_back(lines.at(i+2));
+    elves_groups.push_back(cur_group);
+  }
+  return elves_groups;
+}
+
+char find_badge (const strvec &group) {
+/* Find the common character to all strings in the group */
+  auto str1 = group.front();
+  auto str2 = group.at(1);
+  auto str3 = group.at(2);
+  for (auto chr : str1) {
+    if (str2.find_first_of(chr) != std::string::npos
+     && str3.find_first_of(chr) != std::string::npos)
+      {return chr;}
+  }
+  std::cerr << "Badge not found." << std::endl;
+  return '0';
+}
+
 int main (int argc, char *argv[]) {
   std::cout << "# Day 3 #" << std::endl;
 
@@ -91,4 +120,25 @@ int main (int argc, char *argv[]) {
   auto total_priority = std::reduce(priorities.begin(), priorities.end());
 
   std::cout << "Total priority: " << total_priority << std::endl;
+
+  /* Part2 */
+  /* Group elves by 3 */
+  auto elves_groups = group_elves(lines);
+
+  /* Find the badge of each group */
+  std::vector<char> badges;
+  std::transform(elves_groups.begin(), elves_groups.end(),
+                 std::back_inserter(badges),
+                 find_badge);
+
+  /* Convert badges to priorities */
+  std::vector<int> badge_priorities;
+  std::transform(badges.begin(), badges.end(),
+                 std::back_inserter(badge_priorities),
+                 char_to_priority);
+
+  /* Total badges priorities */
+  auto total_badge_priority = std::reduce(badge_priorities.begin(),
+                                          badge_priorities.end());
+  std::cout << "Total badge priorities: " << total_badge_priority << std::endl;
 }
