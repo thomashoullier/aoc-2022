@@ -126,6 +126,7 @@ class crane {
     crane (const piles init_piles);
 
     void do_move (const move &_move);
+    void do_move_9001 (const move &_move);
 
     int tallest_pile ();
     std::string print_at_height (int height);
@@ -134,7 +135,7 @@ class crane {
     std::string report_top ();
 };
 
-crane::crane (piles init_piles) {
+crane::crane (const piles init_piles) {
 /* Crane constructor */
   crate_piles = init_piles;
 }
@@ -146,6 +147,20 @@ void crane::do_move (const move &_move) {
   for (int i = 0; i < _move.n; i++) {
     crate cur_crate = crate_piles.at(from_pile).back();
     crate_piles.at(from_pile).pop_back();
+    crate_piles.at(to_pile).push_back(cur_crate);
+  }
+}
+
+void crane::do_move_9001 (const move &_move) {
+/* Perform a CrateMover 9001 move operations: all crates at once. */
+  int from_pile = _move.from - 1;
+  int to_pile = _move.to - 1;
+  int from_pile_height = crate_piles.at(from_pile).size();
+  for (int i = 0; i < _move.n; i++) {
+    int crate_pos = from_pile_height - _move.n;
+    crate cur_crate = crate_piles.at(from_pile).at(crate_pos);
+    auto erase_it = crate_piles.at(from_pile).begin();
+    crate_piles.at(from_pile).erase(erase_it + crate_pos);
     crate_piles.at(to_pile).push_back(cur_crate);
   }
 }
@@ -207,7 +222,7 @@ std::string crane::report_top () {
 }
 
 int main (int argc, char *argv[]) {
-  std::cout << "# Day 5 #" << std::endl;
+  std::cout << "# Day 5 Part 1#" << std::endl;
 
   if (argc != 2) {
     std::cerr << "Please provide the input file." << std::endl;
@@ -227,4 +242,10 @@ int main (int argc, char *argv[]) {
 
   std::cout << "Final piles:\n" << crane_mover.print_piles() << std::endl;
   std::cout << "Top crates: " << crane_mover.report_top() << std::endl;
+
+  std::cout << "# Part 2 #" << std::endl;
+  crane crane9001(init_piles);
+  for (auto m : moves_vec) { crane9001.do_move_9001(m); }
+  std::cout << "Final piles:\n" << crane9001.print_piles() << std::endl;
+  std::cout << "Top crates: " << crane9001.report_top() << std::endl;
 }
