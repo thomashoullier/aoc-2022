@@ -43,7 +43,6 @@ int count_piles (const std::string &index_line) {
                                       int_regex);
   auto indices_end = std::sregex_iterator();
   int npiles = std::distance(indices, indices_end);
-  std::cout << "Found " << npiles << " piles." << std::endl;
   return npiles;
 }
 
@@ -119,6 +118,94 @@ moves parse_moves (std::ifstream &input) {
   return moves_vec;
 }
 
+/* Class for managing piles */
+class crane {
+  public:
+    piles crate_piles; //Crate piles to process.
+
+    crane (const piles init_piles);
+
+    void do_move (const move &_move);
+
+    int tallest_pile ();
+    std::string print_at_height (int height);
+    std::string print_indices ();
+    std::string print_piles ();
+    std::string report_top ();
+};
+
+crane::crane (piles init_piles) {
+/* Crane constructor */
+  crate_piles = init_piles;
+}
+
+void crane::do_move (const move &_move) {
+/* Perform the provided move */
+  int from_pile = _move.from - 1;
+  int to_pile = _move.to - 1;
+  for (int i = 0; i < _move.n; i++) {
+    crate cur_crate = crate_piles.at(from_pile).back();
+    crate_piles.at(from_pile).pop_back();
+    crate_piles.at(to_pile).push_back(cur_crate);
+  }
+}
+
+int crane::tallest_pile () {
+/* Report the tallest pile height */
+  auto max_index = std::max_element(crate_piles.begin(), crate_piles.end(),
+                        [](pile pile1, pile pile2) {
+                        return pile1.size() < pile2.size();});
+  int max_height = crate_piles.at(std::distance(crate_piles.begin(), max_index))
+                   .size();
+  return max_height;
+}
+
+std::string crane::print_at_height (int height) {
+/* Print the crate piles at given height as a string. */
+  std::string piles_line;
+  for (auto pile_i : crate_piles) {
+    if (int(pile_i.size()) > height) {
+      piles_line += (std::string(" [")
+                   + pile_i.at(height)
+                   + std::string("]"));
+    } else {
+      piles_line += "    ";
+    }
+  }
+  return piles_line + "\n";
+}
+
+std::string crane::print_indices () {
+/* Pile indices line which goes below the piles printing */
+  std::string indices_line = "  ";
+  int npiles = crate_piles.size();
+  for (int i = 1; i <= npiles; i++) {
+    indices_line += (std::to_string(i) + std::string("   "));
+  }
+  return indices_line + "\n";
+}
+
+std::string crane::print_piles () {
+/* Print the current piles state as a string */
+  int max_height = tallest_pile();
+  std::string piles_str;
+  for (int height = max_height-1; height>=0; height--) {
+    piles_str += print_at_height(height);
+  }
+  piles_str += print_indices();
+  return piles_str;
+}
+
+std::string crane::report_top () {
+/* Report the crates that are on top of each pile. 
+ * It is assumed there is at least a crate in each pile. */
+  std::string top_crates;
+  for (auto pile_i : crate_piles) {
+    top_crates.push_back(pile_i.back());
+  }
+  return top_crates;
+}
+
 int main (int argc, char *argv[]) {
   std::cout << "# Day 5 #" << std::endl;
 
@@ -132,6 +219,12 @@ int main (int argc, char *argv[]) {
   piles init_piles = parse_crate_piles(input);
   moves moves_vec = parse_moves(input);
   
-  std::cout << "Move 1 n: " << moves_vec.front().n << std::endl;
-  std::cout << "Move last n: " << moves_vec.back().n << std::endl;
+  /* Instantiate the crane */
+  crane crane_mover (init_piles);
+  std::cout << "Initial piles:\n" << crane_mover.print_piles() << std::endl;
+
+  for (auto m : moves_vec) { crane_mover.do_move(m); }
+
+  std::cout << "Final piles:\n" << crane_mover.print_piles() << std::endl;
+  std::cout << "Top crates: " << crane_mover.report_top() << std::endl;
 }
