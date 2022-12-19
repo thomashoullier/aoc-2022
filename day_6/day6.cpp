@@ -32,6 +32,30 @@ int find_marker (const std::string &input_line) {
   return marker_pos;
 }
 
+bool buffer_ismessage(const std::deque<char> &buf) {
+/* Check whether the buffer is a message */
+  auto test_buf(buf);
+  std::sort(test_buf.begin(), test_buf.end());
+  auto dups = std::unique(test_buf.begin(), test_buf.end());
+  test_buf.erase(dups, test_buf.end());
+  return (test_buf.size() == buf.size());
+}
+
+int find_message (const std::string &input_line) {
+/* Find the first message (14 characters non-repeating). */
+  char first_char = input_line.front();
+  std::deque<char> buf;
+  for (auto i=0;i<14;i++) {buf.push_back(first_char);}
+  int message_pos = 0;
+  for (char c : input_line) {
+    buf.push_back(c);
+    buf.pop_front();
+    message_pos++;
+    if (buffer_ismessage(buf)) { return message_pos; }
+  }
+  return message_pos;
+}
+
 int main (int argc, char *argv[]) {
   std::cout << "# Day 6 Part 1#" << std::endl;
 
@@ -47,6 +71,11 @@ int main (int argc, char *argv[]) {
 
   /* Finding first marker */
   int marker_pos = find_marker(input_line);
+
+  /* Finding first message */
+  int message_pos = find_message(input_line);
+ 
   std::cout << "Input length: " << input_line.size() << std::endl;
   std::cout << "Marker position: " << marker_pos << std::endl;
+  std::cout << "Message position: " << message_pos << std::endl;
 }
