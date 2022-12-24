@@ -175,8 +175,8 @@ public:
   graph_sizes (Graph _g);
   
   void sort_topo ();
-  //void compute_dirs_size ();
-  //void compute_contents_size (const vertex_desc &folder);
+  void compute_dirs_size ();
+  void compute_contents_size (const vertex_desc &folder);
 };
 
 graph_sizes::graph_sizes (Graph _g) {
@@ -193,17 +193,22 @@ void graph_sizes::sort_topo () {
                [this](vertex_desc v){return !g[v].is_file;});
 }
 
-/*
-void graph_sizes::compute_dirs_size () {
-/ Compute the size of all dirs in the tree /
-
-}*/
-
-/*
 void graph_sizes::compute_contents_size (const vertex_desc &folder) {
-/ Compute the size of the current folder's contents. /
+/* Compute the size of the current folder's contents. */
+  typename GraphTraits::out_edge_iterator out_i, out_end; 
+  boost::tie(out_i, out_end) = out_edges(folder, g);
+  int size = std::accumulate(out_i, out_end, 0,
+    [this](int cur_sum, GraphTraits::edge_descriptor e)
+          {return cur_sum + g[target(e, g)].size;});
+  g[folder].size = size;
+}
 
-}*/
+void graph_sizes::compute_dirs_size () {
+/* Compute the size of all dirs in the tree */
+  for (auto folder : topo_dirs) {
+    compute_contents_size(folder);
+  }
+}
 
 int main (int argc, char *argv[]) {
   std::cout << "# Day 7#" << std::endl;
@@ -236,9 +241,8 @@ int main (int argc, char *argv[]) {
   /* Computing folder sizes */
   graph_sizes gs (gb.g);
   gs.sort_topo();
+  gs.compute_dirs_size();
   for (auto vert : gs.topo_dirs) {
-    std::cout << gs.g[vert].name << std::endl;
+    std::cout << gs.g[vert].name << " " << gs.g[vert].size << std::endl;
   }
-
-  // TODO: Filter to obtain only folders.
 }
