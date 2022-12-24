@@ -242,7 +242,21 @@ int main (int argc, char *argv[]) {
   graph_sizes gs (gb.g);
   gs.sort_topo();
   gs.compute_dirs_size();
+  /*
   for (auto vert : gs.topo_dirs) {
     std::cout << gs.g[vert].name << " " << gs.g[vert].size << std::endl;
   }
+  */
+  /* Finding all folders with size at most 100k */
+  std::vector<vertex_desc> small_folders;
+  std::copy_if(gs.topo_dirs.begin(), gs.topo_dirs.end(),
+               std::back_inserter(small_folders),
+               [gs](vertex_desc v){return gs.g[v].size <= 100000;});
+  /* Summing the size of all of the small folders */
+  int small_folders_sum = 
+    std::accumulate(small_folders.begin(), small_folders.end(), 0,
+    [gs](int cur_sum, vertex_desc v)
+        {return cur_sum + gs.g[v].size;});
+  std::cout << "Total size of folders of size at most 100k: "
+            << small_folders_sum << std::endl;
 }
