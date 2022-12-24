@@ -259,4 +259,26 @@ int main (int argc, char *argv[]) {
         {return cur_sum + gs.g[v].size;});
   std::cout << "Total size of folders of size at most 100k: "
             << small_folders_sum << std::endl;
+
+  /* Part 2 */
+  /* Total used space */
+  int fs_space = 70000000;
+  int used_space = gs.g[gs.topo_dirs.back()].size;
+  int free_space = fs_space - used_space;
+  int target_free_space = 30000000;
+  int space_to_free = target_free_space - free_space;
+  std::cout << "Used space: " << used_space << std::endl;
+  std::cout << "Space to free: " << space_to_free << std::endl;
+  /* Folders big enough to delete */
+  std::vector<vertex_desc> big_folders;
+  std::copy_if(gs.topo_dirs.begin(), gs.topo_dirs.end(),
+               std::back_inserter(big_folders),
+               [gs, space_to_free](vertex_desc v)
+               {return gs.g[v].size >= space_to_free;});
+  /* Find the smallest of these folders */
+  std::sort(big_folders.begin(), big_folders.end(),
+            [gs](vertex_desc a, vertex_desc b)
+            {return gs.g[a].size < gs.g[b].size;});
+  std::cout << "Smallest directory size for deletion: "
+            << gs.g[big_folders.front()].size << std::endl;
 }
