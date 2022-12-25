@@ -11,6 +11,7 @@
 
 typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> height_mat;
 typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> visibility_map;
+typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic> scenic_map;
 
 std::vector<std::string> parse_input (std::ifstream &input) {
 /* Parse the input file to a vector of line strings */
@@ -118,6 +119,69 @@ visibility_map compute_visibility_map (const height_mat &heights) {
   return visibs;
 }
 
+int right_view_dist (int krow, int kcol, const height_mat &heights) {
+/* Compute the view distance to the right of the tree at position (krow, kcol)*/
+  int view_dist = 0;
+  int kheight = heights(krow, kcol);
+  int cur_height = -1;
+  for (int icol = kcol + 1; (icol < heights.cols() and cur_height < kheight);
+       icol++) {
+    cur_height = heights(krow, icol);
+    view_dist++;
+  }
+  return view_dist;
+}
+
+int left_view_dist (int krow, int kcol, const height_mat &heights) {
+  int view_dist = 0;
+  int kheight = heights(krow, kcol);
+  int cur_height = -1;
+  for (int icol = kcol - 1; (icol >= 0 and cur_height < kheight); icol--) {
+    cur_height = heights(krow, icol);
+    view_dist++;
+  }
+  return view_dist;
+}
+
+int bottom_view_dist (int krow, int kcol, const height_mat &heights) {
+  int view_dist = 0;
+  int kheight = heights(krow, kcol);
+  int cur_height = -1;
+  for (int irow = krow + 1; (irow < heights.rows() and cur_height < kheight);
+       irow++) {
+    cur_height = heights(irow, kcol);
+    view_dist++;
+  }
+  return view_dist;
+}
+
+int top_view_dist (int krow, int kcol, const height_mat &heights) {
+  int view_dist = 0;
+  int kheight = heights(krow, kcol);
+  int cur_height = -1;
+  for (int irow = krow - 1; (irow >= 0 and cur_height < kheight);
+       irow--) {
+    cur_height = heights(irow, kcol);
+    view_dist++;
+  }
+  return view_dist;
+}
+
+scenic_map compute_scenic_scores (const height_mat &heights) {
+/* Compute the scenic score for each matrix cell. */
+  scenic_map scenic_scores = scenic_map::Zero(heights.rows(), heights.cols());
+  for (int krow = 0; krow < heights.rows(); krow++) {
+    for (int kcol = 0;  kcol < heights.cols(); kcol++) {
+      scenic_scores(krow, kcol) =
+        right_view_dist(krow, kcol, heights)
+      * left_view_dist(krow, kcol, heights)
+      * bottom_view_dist(krow, kcol, heights)
+      * top_view_dist(krow, kcol, heights);
+    }
+  }
+  return scenic_scores;
+}
+
 int main (int argc, char *argv[]) {
   std::cout << "# Day 8#" << std::endl;
 
@@ -137,4 +201,9 @@ int main (int argc, char *argv[]) {
   /* Counting visible trees */
   int nvis = visibs.sum();
   std::cout << "Visible trees: " << nvis << std::endl;
+
+  /* Computing the scenic score for every tree */
+  auto scenic_scores = compute_scenic_scores(heights);
+  std::cout << "Maximum scenic score: " << scenic_scores.maxCoeff()
+            << std::endl;
 }
