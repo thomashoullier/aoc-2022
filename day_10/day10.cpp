@@ -44,11 +44,17 @@ op parse_op (const std::string &line) {
 class cycle_sim {
   public:
   int cycles = 0;
-  int value = 1;
+  int value = 1; // CRT sprite position.
   std::vector<int> value_at_cycle; // Value during cycle index.
+  int cur_pix = 0; // Current CRT pixel position.
+  std::string cur_crtline;
+  std::vector<std::string> crt_lines;
 
   cycle_sim ();
   void do_op (const op &next_op);
+  private:
+  char draw_char();
+  void update_cur_pix();
 };
 
 cycle_sim::cycle_sim () {
@@ -56,11 +62,32 @@ cycle_sim::cycle_sim () {
   value_at_cycle.push_back(value); // Value during cycle zero.
 }
 
+char cycle_sim::draw_char() {
+/* Draw the current CRT character */
+  if ((cur_pix >= value - 1) and (cur_pix <= value + 1)) {
+    return '#';
+  } else {
+    return '.';
+  }
+}
+
+void cycle_sim::update_cur_pix () {
+/* Update the current pixel position (horizontal) */
+  cur_pix++;
+  if (cur_pix >= 40) {
+    cur_pix = 0;
+    crt_lines.push_back(cur_crtline);
+    cur_crtline.clear();
+  }
+}
+
 void cycle_sim::do_op (const op &next_op) {
 /* Apply the next operation */
   for (int icyc = 0; icyc < next_op.duration; icyc++) {
-    cycles++;
     value_at_cycle.push_back(value);
+    cur_crtline.push_back(draw_char());
+    update_cur_pix();
+    cycles++;
   }
   value += next_op.value;
 }
@@ -96,4 +123,10 @@ int main (int argc, char *argv[]) {
     sigsum += i * value;
   }
   std::cout << "Total signal strength: " << sigsum << std::endl;
+
+  /* Part2: printing the CRT scree */
+  std::cout << "CRT screen:" << std::endl;
+  for (auto s : csim.crt_lines) {
+    std::cout << s << std::endl;
+  }
 }
