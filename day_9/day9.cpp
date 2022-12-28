@@ -47,7 +47,7 @@ struct move {
 move parse_moveline (const std::string &line) {
 /* Parse a move string */
   char dir = line.at(0);
-  int steps = line.at(2) - '0';
+  int steps = std::stoi(line.substr(2));
   return move(dir, steps);
 }
 
@@ -56,8 +56,8 @@ typedef std::unordered_map<pos, int, pos::hash_function> pos_counts_map;
 
 class knots_state {
   public:
-  pos head;
-  pos tail;
+  pos head = pos(0, 0);
+  pos tail = pos(0, 0);
   pos_counts_map visits;
 
   knots_state ();
@@ -65,47 +65,61 @@ class knots_state {
   
   private:
   pos move_to_pos (const move &_move); // Convert the move direction to a delta pos.
+  bool tail_mustmove ();
   void update_head (const pos &dpos); // Update the head position.
   void update_tail (); // Update the tail position.
   void note_visited (); // Update the tail visit map.
 };
 
 knots_state::knots_state () {
-  head = pos(0, 0);
-  tail = pos(0, 0);
-  //TODO: tail visited 0,0
+  note_visited();
 }
 
 pos knots_state::move_to_pos (const move &_move) {
   switch (_move.dir) {
-    case 'L': return pos(0, -1);
-    case 'R': return pos(0, 1);
-    case 'U': return pos(1, 0);
-    case 'D': return pos(-1, 0);
-    default: std::cerr << "Move direction unrecognized." << std::endl;
+    case 'L': return pos(0, -1); break;
+    case 'R': return pos(0, 1); break;
+    case 'U': return pos(1, 0); break;
+    case 'D': return pos(-1, 0); break;
+    default:
+      std::cerr << "Move direction unrecognized." << std::endl;
+      return pos(0,0);
   }
 }
 
-knots_state::update_head (const pos &dpos) {
+void knots_state::update_head (const pos &dpos) {
 /* Update the head position by a single step */
   head.row += dpos.row;
   head.col += dpos.col;
 }
 
-knots_state::update_tail () {
+bool knots_state::tail_mustmove () {
+/* Indicate whether the tail position must move */
+  int drow = std::abs(head.row - tail.row);
+  int dcol = std::abs(head.col - tail.col);
+  int dmax = std::max(drow, dcol);
+  return (dmax >= 2);
+}
+
+void knots_state::update_tail () {
 /* Update the tail position in relation with the head position */
-
+  if (tail_mustmove()) {
+    int drow = head.row - tail.row;
+    int dcol = head.col - tail.col;
+    if (drow != 0) { tail.row += drow / std::abs(drow); }
+    if (dcol != 0) { tail.col += dcol / std::abs(dcol); }
+  }
 }
 
-knots_state::note_visited () {
+void knots_state::note_visited () {
 /* Update the visits map with the current tail position */
-
+  visits[tail]++;
 }
 
-knots_state::process_move (const move &_move) {
+void knots_state::process_move (const move &_move) {
 /* Process a single move line */
   pos dpos = move_to_pos(_move); // Single update step.
-  for (istep = 0; istep < _move.steps; istep++) {
+  for (int istep = 0; istep < _move.steps; istep++) {
     update_head(dpos);
     update_tail();
     note_visited();
@@ -115,9 +129,7 @@ knots_state::process_move (const move &_move) {
 int main (int argc, char *argv[]) {
   std::cout << "# Day 9#" << std::endl;
 
-  std::unordered_map<pos, int, pos::hash_function> umap;
-  umap[pos(3, 2)] = 10;
-  umap[pos(2, 1)] = 11;
+  knots_state ks;
 
   if (argc != 2) {
     std::cerr << "Please provide the input file." << std::endl;
@@ -126,4 +138,12 @@ int main (int argc, char *argv[]) {
 
   /* Parsing the input text */
   std::ifstream input(argv[1]);
+  std::string line;
+  while (std::getline(input, line)) {
+    move cur_move = parse_moveline(line);
+    ks.process_move(cur_move);
+  }
+
+  std::cout << "Number of locations visited by tail: "
+            << ks.visits.size() << std::endl;
 }
