@@ -8,6 +8,8 @@
 #include <functional>
 #include <utility>
 #include <regex>
+#include <queue>
+#include <cmath>
 
 #include <boost/algorithm/string.hpp>
 
@@ -103,7 +105,6 @@ int parse_integer (const std::string &line) {
     std::string int_str = match.str();
     return std::stoi(int_str);
   } else {
-    std::cerr << "No match found." << std::endl;
     return -1;
   }
 }
@@ -141,6 +142,94 @@ monkey_desc parse_monkey_block (const std::string &monkey_block) {
   return monkey_d;
 }
 
+/* Operation */
+struct op {
+  std::function<int (int, int)> fun; // Function to apply.
+  std::vector<int> arg; // Argument, can be empty.
+};
+
+op parse_op_string (const std::string &op_str) {
+/* Parse an operation string to an op struct */
+  op operation;
+  /* Operator matching */
+  std::regex operator_regex("\\*|\\+");
+  std::smatch match;
+  std::regex_search(op_str, match, operator_regex);
+  std::string fun_str = match.str();
+  if (fun_str == "+") {
+    operation.fun = std::plus<int>();
+  } else if (fun_str == "*") {
+    operation.fun = std::multiplies<int>();
+  }
+  else {
+    std::cerr << "Operator not recognized" << std::endl;
+  }
+  /* Argument matching */
+  int found_integer = parse_integer(op_str);
+  if (found_integer != -1) {
+    operation.arg.push_back(found_integer);
+  }
+  return operation;
+}
+
+class monkey { // Single monkey instance
+  public:
+  std::queue<int> items;
+  op operation;
+  int div_num;
+  int true_monkey;
+  int false_monkey;
+  int inspect_count = 0; // Total number of inspections performed.
+
+  monkey (const monkey_desc &mk);
+  int inspect_next_item (); // Inspect the first item, changes its value
+                            // and indicate to which monkey to throw it to.
+  private:
+  int do_op (const int &num);
+  int test_item (const int &num);
+};
+
+monkey::monkey (const monkey_desc &mk) {
+  for (auto item : mk.items) {
+    items.push(item);
+  }
+  operation = parse_op_string(mk.op);
+  div_num = mk.div_num;
+  true_monkey = mk.true_monkey;
+  false_monkey = mk.false_monkey;
+}
+
+int monkey::do_op (const int &num) {
+// Apply the operation on item number.
+  int second_arg;
+  if (operation.arg.empty()) {
+    second_arg = num;
+  } else {
+    second_arg = operation.arg.front();
+  }
+  int new_num = operation.fun(num, second_arg);
+  return new_num;
+}
+
+int monkey::test_item (const int &num) {
+// Test the current item value num and give the monkey target
+  int monkey_target;
+  if (num % div_num == 0) {
+    monkey_target = true_monkey;
+  } else {
+    monkey_target = false_monkey;
+  }
+  return monkey_target;
+}
+
+int monkey::inspect_next_item () {
+  items.front() = do_op(items.front());
+  // The score is divided by 3 and floored.
+  items.front() = int(std::floor(items.front() / 3.0));
+  inspect_count++;
+  return test_item(items.front());
+}
+
 int main (int argc, char *argv[]) {
   std::cout << "# Day 11#" << std::endl;
 
@@ -153,19 +242,20 @@ int main (int argc, char *argv[]) {
   std::ifstream input(argv[1]);
   std::string text = parse_file_to_string(input);
   std::vector<std::string> monkey_blocks = text_to_monkey_blocks(text);
-  
-  std::cout << "First monkey block: " << std::endl << monkey_blocks.front()
-            << std::endl << "Last monkey block: " << std::endl
-            << monkey_blocks.back() << std::endl;
-  
+ 
+  /* Parse monkey descriptors */
   std::vector<monkey_desc> monkeys_desc;
   for (auto block : monkey_blocks) {
     monkeys_desc.push_back(parse_monkey_block(block));
   }
 
-  std::cout << "Parsed monkey descriptors: " << std::endl;
+  /* Declare monkey instances */
+  std::vector<monkey> monkeys;
   for (auto mk : monkeys_desc) {
-    print_monkey_desc(mk);
-    std::cout << std::endl;
+    monkeys.push_back(monkey(mk));
   }
+
+  /* Monkey inspects an item */
+  std::cout << "First monkey throws first item to: "
+            << monkeys.front().inspect_next_item() << std::endl;
 }
