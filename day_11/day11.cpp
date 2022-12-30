@@ -230,6 +230,50 @@ int monkey::inspect_next_item () {
   return test_item(items.front());
 }
 
+/* All monkeys together */
+class monkey_sim {
+  public:
+  std::vector<monkey> monkeys;
+
+  monkey_sim(const std::vector<monkey> &_monkeys);
+  void next_round();
+  std::vector<int> inspect_counts ();
+
+  private:
+  // The given monkey inspects and throws an item.
+  void monkey_throw (const int &mk_index);
+};
+
+monkey_sim::monkey_sim (const std::vector<monkey> &_monkeys) {
+  monkeys = _monkeys;
+}
+
+void monkey_sim::monkey_throw (const int &mk_index) {
+  int monkey_target = monkeys.at(mk_index).inspect_next_item();
+  auto item = monkeys.at(mk_index).items.front();
+  monkeys.at(mk_index).items.pop();
+  monkeys.at(monkey_target).items.push(item);
+}
+
+void monkey_sim::next_round() {
+  // Complete an entire round of monkey turns.
+  for (int imonkey = 0; imonkey < int(monkeys.size()) ; imonkey++) {
+    // Each monkey throws all of its items.
+    while (not monkeys.at(imonkey).items.empty()) {
+      monkey_throw(imonkey);
+    }
+  }
+}
+
+std::vector<int> monkey_sim::inspect_counts () {
+  // Return the inspect counts of monkeys in order
+  std::vector<int> counts;
+  for (auto m : monkeys) {
+    counts.push_back(m.inspect_count);
+  }
+  return counts;
+}
+
 int main (int argc, char *argv[]) {
   std::cout << "# Day 11#" << std::endl;
 
@@ -255,7 +299,15 @@ int main (int argc, char *argv[]) {
     monkeys.push_back(monkey(mk));
   }
 
-  /* Monkey inspects an item */
-  std::cout << "First monkey throws first item to: "
-            << monkeys.front().inspect_next_item() << std::endl;
+  monkey_sim mksim(monkeys);
+
+  /* Run simulation for 20 rounds */
+  for (int iround = 0; iround < 20; iround++) {
+    mksim.next_round();
+  }
+  std::vector<int> inspect_counts = mksim.inspect_counts();
+  std::sort(inspect_counts.begin(), inspect_counts.end(), std::greater<int>());
+  std::cout << "Monkey business: "
+            << inspect_counts.at(0) * inspect_counts.at(1)
+            << std::endl;
 }
