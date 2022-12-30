@@ -44,6 +44,19 @@ struct monkey_desc {
   int false_monkey; // false case.
 };
 
+void print_monkey_desc (const monkey_desc &mk) {
+/* Print monkey_desc instance */
+  std::cout << "<monkey_desc " << std::endl;
+  std::cout << "Items: ";
+  for (auto item : mk.items) { std::cout << item << " "; }
+  std::cout << std::endl;
+  std::cout << "Operation: " << mk.op << std::endl
+            << "div_num: " << mk.div_num << std::endl
+            << "true_monkey: " << mk.true_monkey << std::endl
+            << "false_monkey: " << mk.false_monkey;
+  std::cout << ">" << std::endl;
+}
+
 std::vector<std::string> monkey_block_tolines
                          (const std::string &monkey_block) {
 /* Cut the monkey block into individual lines */
@@ -76,30 +89,44 @@ std::vector<int> parse_items (const std::string &items_line) {
   return items;
 }
 
-//std::string parse_op (const std::string &op_line) {
+std::string parse_op (const std::string &op_line) {
 /* Parse the op string in the op line */
+  std::string::size_type pos = op_line.find("=");
+  return op_line.substr(pos + 2);
+}
 
-//}
+int parse_integer (const std::string &line) {
+/* Parse a single integer contained in the line. Helper method. */
+  std::regex int_regex("[0-9]+");
+  std::smatch match;
+  if (std::regex_search(line, match, int_regex)) {
+    std::string int_str = match.str();
+    return std::stoi(int_str);
+  } else {
+    std::cerr << "No match found." << std::endl;
+    return -1;
+  }
+}
 
-//int parse_div (const std::string &div_line) {
+int parse_div (const std::string &div_line) {
 /* Parse the div number in the div line. */
+  return parse_integer(div_line);
+}
 
-//}
-
-//int parse_true_monkey (const std::string &true_line) {
+int parse_true_monkey (const std::string &true_line) {
 /* Parse the true monkey index */
+  return parse_integer(true_line);
+}
 
-//}
-
-//int parse_false_monkey (const std::string &false_line) {
+int parse_false_monkey (const std::string &false_line) {
 /* Parse the false monkey index */
+  return parse_integer(false_line);
+}
 
-//}
-
-/*monkey_desc parse_monkey_block (const std::string &monkey_block) {
-/ Parse a monkey block into a monkey_desc struct /
+monkey_desc parse_monkey_block (const std::string &monkey_block) {
+/* Parse a monkey block into a monkey_desc struct */
   monkey_desc monkey_d;
-  std::vector<string> lines = monkey_block_to_lines(monkey_block);
+  std::vector<std::string> lines = monkey_block_tolines(monkey_block);
   std::string items_line = lines.at(1);
   std::string op_line = lines.at(2);
   std::string div_line = lines.at(3);
@@ -112,7 +139,7 @@ std::vector<int> parse_items (const std::string &items_line) {
   monkey_d.true_monkey = parse_true_monkey(true_line);
   monkey_d.false_monkey = parse_false_monkey(false_line);
   return monkey_d;
-}*/
+}
 
 int main (int argc, char *argv[]) {
   std::cout << "# Day 11#" << std::endl;
@@ -130,17 +157,15 @@ int main (int argc, char *argv[]) {
   std::cout << "First monkey block: " << std::endl << monkey_blocks.front()
             << std::endl << "Last monkey block: " << std::endl
             << monkey_blocks.back() << std::endl;
-
-  /* Monkey block to lines */
-  std::vector<std::string> monkey_lines = 
-    monkey_block_tolines(monkey_blocks.at(2));
-  for (auto l : monkey_lines) {
-    std::cout << "Line #" << std::endl;
-    std::cout << l << std::endl;
+  
+  std::vector<monkey_desc> monkeys_desc;
+  for (auto block : monkey_blocks) {
+    monkeys_desc.push_back(parse_monkey_block(block));
   }
-  std::string items_line = monkey_lines.at(1);
-  auto items = parse_items(items_line);
-  for (auto it : items) {
-    std::cout << it << " ";
-  } std::cout << std::endl;
+
+  std::cout << "Parsed monkey descriptors: " << std::endl;
+  for (auto mk : monkeys_desc) {
+    print_monkey_desc(mk);
+    std::cout << std::endl;
+  }
 }
