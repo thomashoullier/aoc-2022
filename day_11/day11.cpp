@@ -10,8 +10,11 @@
 #include <regex>
 #include <queue>
 #include <cmath>
+#include <limits>
 
 #include <boost/algorithm/string.hpp>
+
+typedef unsigned long long int LI; // Type for the value of items.
 
 /* Text file parsing */
 std::string parse_file_to_string (std::ifstream &input) {
@@ -144,8 +147,8 @@ monkey_desc parse_monkey_block (const std::string &monkey_block) {
 
 /* Operation */
 struct op {
-  std::function<int (int, int)> fun; // Function to apply.
-  std::vector<int> arg; // Argument, can be empty.
+  std::function<LI (LI, LI)> fun; // Function to apply.
+  std::vector<LI> arg; // Argument, can be empty.
 };
 
 op parse_op_string (const std::string &op_str) {
@@ -157,9 +160,9 @@ op parse_op_string (const std::string &op_str) {
   std::regex_search(op_str, match, operator_regex);
   std::string fun_str = match.str();
   if (fun_str == "+") {
-    operation.fun = std::plus<int>();
+    operation.fun = std::plus<LI>();
   } else if (fun_str == "*") {
-    operation.fun = std::multiplies<int>();
+    operation.fun = std::multiplies<LI>();
   }
   else {
     std::cerr << "Operator not recognized" << std::endl;
@@ -167,14 +170,14 @@ op parse_op_string (const std::string &op_str) {
   /* Argument matching */
   int found_integer = parse_integer(op_str);
   if (found_integer != -1) {
-    operation.arg.push_back(found_integer);
+    operation.arg.push_back(LI(found_integer));
   }
   return operation;
 }
 
 class monkey { // Single monkey instance
   public:
-  std::queue<int> items;
+  std::queue<LI> items;
   op operation;
   int div_num;
   int true_monkey;
@@ -184,9 +187,12 @@ class monkey { // Single monkey instance
   monkey (const monkey_desc &mk);
   int inspect_next_item (); // Inspect the first item, changes its value
                             // and indicate to which monkey to throw it to.
+  int inspect_next_item_noredux (const LI &maxval); // part 2
   private:
-  int do_op (const int &num);
-  int test_item (const int &num);
+  LI do_op (const LI &num);
+  LI update_item_value (const LI &num);
+  LI update_without_reduction (const LI &num, const LI &maxval); //part 2
+  int test_item (const LI &num);
 };
 
 monkey::monkey (const monkey_desc &mk) {
@@ -199,22 +205,22 @@ monkey::monkey (const monkey_desc &mk) {
   false_monkey = mk.false_monkey;
 }
 
-int monkey::do_op (const int &num) {
+LI monkey::do_op (const LI &num) {
 // Apply the operation on item number.
-  int second_arg;
+  LI second_arg;
   if (operation.arg.empty()) {
     second_arg = num;
   } else {
     second_arg = operation.arg.front();
   }
-  int new_num = operation.fun(num, second_arg);
+  LI new_num = operation.fun(num, second_arg);
   return new_num;
 }
 
-int monkey::test_item (const int &num) {
+int monkey::test_item (const LI &num) {
 // Test the current item value num and give the monkey target
   int monkey_target;
-  if (num % div_num == 0) {
+  if (num % LI(div_num) == 0) {
     monkey_target = true_monkey;
   } else {
     monkey_target = false_monkey;
@@ -222,10 +228,30 @@ int monkey::test_item (const int &num) {
   return monkey_target;
 }
 
+LI monkey::update_item_value (const LI &num) {
+  LI new_num = do_op(num);
+  new_num = LI(std::floor(new_num / 3.0));
+  return new_num;
+}
+
 int monkey::inspect_next_item () {
-  items.front() = do_op(items.front());
   // The score is divided by 3 and floored.
-  items.front() = int(std::floor(items.front() / 3.0));
+  items.front() = update_item_value(items.front());
+  inspect_count++;
+  return test_item(items.front());
+}
+
+LI monkey::update_without_reduction (const LI &num, const LI &maxval) {
+  /* maxval is subtracted when the num is greater or equal. */
+  LI new_num = do_op(num);
+  if (new_num >= maxval) {
+    new_num = new_num % maxval;
+  }
+  return new_num;
+}
+
+int monkey::inspect_next_item_noredux (const LI &maxval) {
+  items.front() = update_without_reduction(items.front(), maxval);
   inspect_count++;
   return test_item(items.front());
 }
@@ -234,22 +260,37 @@ int monkey::inspect_next_item () {
 class monkey_sim {
   public:
   std::vector<monkey> monkeys;
+  LI maxval; // Multiplication of all the divisors.
 
   monkey_sim(const std::vector<monkey> &_monkeys);
   void next_round();
+  void next_round_noredux();
   std::vector<int> inspect_counts ();
 
   private:
   // The given monkey inspects and throws an item.
   void monkey_throw (const int &mk_index);
+  void monkey_throw_noredux (const int &mk_index); // part 2
 };
 
 monkey_sim::monkey_sim (const std::vector<monkey> &_monkeys) {
   monkeys = _monkeys;
+  /* Compute the multiplication of all divisors. */
+  maxval = 1;
+  for (auto mk : monkeys) {
+    maxval *= mk.div_num;
+  }
 }
 
 void monkey_sim::monkey_throw (const int &mk_index) {
   int monkey_target = monkeys.at(mk_index).inspect_next_item();
+  auto item = monkeys.at(mk_index).items.front();
+  monkeys.at(mk_index).items.pop();
+  monkeys.at(monkey_target).items.push(item);
+}
+
+void monkey_sim::monkey_throw_noredux (const int &mk_index) {
+  int monkey_target = monkeys.at(mk_index).inspect_next_item_noredux(maxval);
   auto item = monkeys.at(mk_index).items.front();
   monkeys.at(mk_index).items.pop();
   monkeys.at(monkey_target).items.push(item);
@@ -261,6 +302,16 @@ void monkey_sim::next_round() {
     // Each monkey throws all of its items.
     while (not monkeys.at(imonkey).items.empty()) {
       monkey_throw(imonkey);
+    }
+  }
+}
+
+void monkey_sim::next_round_noredux() {
+  // Complete an entire round of monkey turns.
+  for (int imonkey = 0; imonkey < int(monkeys.size()) ; imonkey++) {
+    // Each monkey throws all of its items.
+    while (not monkeys.at(imonkey).items.empty()) {
+      monkey_throw_noredux(imonkey);
     }
   }
 }
@@ -309,5 +360,44 @@ int main (int argc, char *argv[]) {
   std::sort(inspect_counts.begin(), inspect_counts.end(), std::greater<int>());
   std::cout << "Monkey business: "
             << inspect_counts.at(0) * inspect_counts.at(1)
+            << std::endl;
+
+  /* Part 2 */
+  // Note: We observe an overflow in the items' value if we carry on as
+  // before. This is the case even with 64bits integers. One (inelegant)
+  // solution would have been to perform the simulation with bignums.
+  // Another solution is to note we need only track the items' value insofar
+  // as they pertain to the divisibility tests. So we can loop their value
+  // back to 0 once they reach the multiplication of all the numbers which
+  // we test divisibility against.
+  std::cout << "# Part 2" << std::endl;
+
+  /* Run simulation */
+  monkey_sim mksim2(monkeys);
+
+  std::cout << "Multiplication of divisors: " << mksim2.maxval << std::endl;
+
+  for (int iround = 0; iround < 10000; iround++) {
+    mksim2.next_round_noredux();
+  }
+
+  /* Get inspect counts and sort */
+  std::vector<int> inspect_counts2 = mksim2.inspect_counts();
+  std::sort(inspect_counts2.begin(), inspect_counts2.end(),
+            std::greater<int>());
+  
+  /* Print item values in first monkey for check */
+  std::cout << "First monkey items at the end: " << std::endl;
+  for (int i_item = 0; i_item < int(mksim2.monkeys.front().items.size());
+       i_item++) {
+    std::cout << "Item value: " << mksim2.monkeys.front().items.front()
+              << std::endl;
+    mksim2.monkeys.front().items.pop();
+  }
+
+  /* Compute the monkey business */
+  std::cout << "Monkey business part 2: "
+            << inspect_counts2.at(0) << " x " << inspect_counts2.at(1)
+            << " = " << LI(inspect_counts2.at(0)) * LI(inspect_counts2.at(1))
             << std::endl;
 }
