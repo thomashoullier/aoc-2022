@@ -14,6 +14,8 @@
 
 #include <Eigen/Core>
 #include <boost/functional/hash.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/graph_traits.hpp>
 
 /* Position struct: position on the map. */
 struct pos {
@@ -28,6 +30,10 @@ struct pos {
   pos() {
     this->row = 0;
     this->col = 0;
+  }
+
+  bool operator==(const pos &pos2) const {
+    return (this->row == pos2.row and this->col == pos2.col);
   }
 
   struct hash_function {
@@ -99,7 +105,49 @@ elevation_map parse_toemap (const lines_vec &lines) {
 }
 
 /* Moves graph */
+struct VertexProperty {
+  int alt; // Altitude of the vertex.
+  pos position; // Position of the vertex on the map.
+};
 
+typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS,
+                              VertexProperty> Graph;
+typedef boost::graph_traits<Graph>::vertex_descriptor vertex_desc;
+
+class elevation_graph {
+  public:
+  Graph g;
+  vertex_desc start;
+  vertex_desc end;
+  
+  void add_vertices (const elevation_map &emap);
+  elevation_graph (const elevation_map &emap);
+};
+
+void elevation_graph::add_vertices (const elevation_map &emap) {
+  // Add vertices to the graph (no edges yet).
+  for (int irow = 0; irow < emap.alts.rows(); irow++) {
+    for (int icol = 0; icol < emap.alts.cols(); icol++) {
+      vertex_desc node = add_vertex(g);
+      g[node].alt = emap.alts(irow, icol);
+      g[node].position = pos(irow, icol);
+      // Mark the start and end nodes.
+      if (g[node].position == emap.start) { start = node; }
+      if (g[node].position == emap.end) { end = node; }
+    }
+  }
+}
+
+//void elevation_graph::add_edges () {
+  // Add the graph edges from the elevation rules.
+  // TODO: Use the existing vertices indexing.
+//}
+
+elevation_graph::elevation_graph (const elevation_map &emap) {
+  // elevation_graph constructor.
+  /* Add all vertices from the elevation matrix */
+  add_vertices(emap);
+}
 
 int main (int argc, char *argv[]) {
   std::cout << "# Day 12#" << std::endl;
@@ -132,4 +180,7 @@ int main (int argc, char *argv[]) {
     }
     std::cout << std::endl;
   }
+
+  /* Creating the graph of possible moves between grid cells */
+  auto gmap = elevation_graph(emap);
 }
