@@ -1,7 +1,7 @@
 # Advent of Code 2022
 Solving the Advent of Code (AOC) 2022 puzzles. This year in C++.
 
-My goal is to learn to use common C++ libraries used in solving
+My goal is to learn som common C++ libraries used in solving
 the type of problems in AOC. I tried using mostly modern C++.
 
 My rules are:
@@ -14,6 +14,6 @@ For future references, here are the days where I used notable concepts
 or libraries:
 * Regular expressions: days 5, 11
 * Queues: day 6
-* Graphs: day 7
+* Graphs (with Boost Graph Library): day 7
 * Eigen: day 8
 * Hashmap: day 9
