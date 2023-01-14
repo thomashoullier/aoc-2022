@@ -14,6 +14,6 @@ For future references, here are the days where I used notable concepts
 or libraries:
 * Regular expressions: days 5, 11
 * Queues: day 6
-* Graphs (with Boost Graph Library): day 7
+* Graphs (with Boost Graph Library): day 7, 12
 * Eigen: day 8
 * Hashmap: day 9

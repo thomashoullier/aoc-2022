@@ -18,6 +18,7 @@
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/dijkstra_shortest_paths.hpp>
+#include <boost/graph/reverse_graph.hpp>
 
 /* Position struct: position on the map. */
 struct pos {
@@ -236,12 +237,6 @@ int main (int argc, char *argv[]) {
   std::cout << "Altitude map: " << std::endl
             << "Start: " << emap.start.row << ", " << emap.start.col << std::endl
             << "End: " << emap.end.row << ", " << emap.end.col << std::endl;
-  for (int irow = 0; irow < emap.alts.rows(); irow++) {
-    for (int icol = 0; icol < emap.alts.cols(); icol++) {
-      std::cout << emap.alts(irow, icol);
-    }
-    std::cout << std::endl;
-  }
 
   /* Creating the graph of possible moves between grid cells */
   auto gmap = elevation_graph(emap);
@@ -253,4 +248,29 @@ int main (int argc, char *argv[]) {
     boost::predecessor_map(&parents[0]).distance_map(&distances[0]));
   std::cout << "Shortest path from start to end: "
             << distances[gmap.end] << std::endl;
+
+  /* Part 2 */
+  // We transpose the graph, a forward edge between cells
+  // now means "can be accessed from".
+  auto ginv = boost::make_reverse_graph(gmap.g);
+  
+  // Compute the dijkstra distances over this new graph from the end vertex.
+  std::vector<vertex_desc> parents_inv(num_vertices(ginv));
+  std::vector<int> distances_inv(num_vertices(ginv));
+  boost::dijkstra_shortest_paths(ginv, gmap.end,
+    boost::predecessor_map(&parents_inv[0]).distance_map(&distances_inv[0]));
+  
+  // Iterate over the cells with altitude 0 and find the closest distance.
+  int shortest_distance = std::numeric_limits<int>::max();
+  for (int irow = 0; irow < emap.alts.rows(); irow++) {
+    for (int icol = 0; icol < emap.alts.cols(); icol++) {
+      auto cur_alt = emap.alts(irow, icol);
+      auto cur_vertex = gmap.vertex_handles.at(irow).at(icol);
+      auto cur_distance = distances_inv[cur_vertex];
+      if ((cur_alt == 0) && (cur_distance < shortest_distance)) {
+        shortest_distance = cur_distance;
+      }
+    }
+  }
+  std::cout << "Part2 shortest distance: " << shortest_distance << std::endl;
 }
