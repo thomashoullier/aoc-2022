@@ -14,8 +14,10 @@
 
 #include <Eigen/Core>
 #include <boost/functional/hash.hpp>
+
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graph_traits.hpp>
+#include <boost/graph/dijkstra_shortest_paths.hpp>
 
 /* Position struct: position on the map. */
 struct pos {
@@ -110,8 +112,10 @@ struct VertexProperty {
   pos position; // Position of the vertex on the map.
 };
 
+typedef boost::property<boost::edge_weight_t, float> EdgeWeightProperty;
+EdgeWeightProperty unit_weight(1);
 typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS,
-                              VertexProperty> Graph;
+                              VertexProperty, EdgeWeightProperty> Graph;
 typedef boost::graph_traits<Graph>::vertex_descriptor vertex_desc;
 // Matrix of handles to graph vertices. (I don't know if there is a smarter
 // way).
@@ -126,6 +130,7 @@ class elevation_graph {
   
   void add_vertices (const elevation_map &emap);
   void add_endpoints (const elevation_map &emap);
+  void add_edges (const elevation_map &emap);
   elevation_graph (const elevation_map &emap);
 };
 
@@ -150,16 +155,60 @@ void elevation_graph::add_endpoints (const elevation_map &emap) {
   end = vertex_handles.at(emap.end.row).at(emap.end.col);
 }
 
-//void elevation_graph::add_edges () {
+void elevation_graph::add_edges (const elevation_map &emap) {
   // Add the graph edges from the elevation rules.
-  // TODO: Use the existing vertices indexing.
-//}
+  // Scan every cell and add edges to every neighbouring cell which
+  // can be reached.
+  // We could pad the emap.alts matrix with large ints on all sides
+  // in order to avoid checking for bounds.
+  for (int irow = 0; irow < emap.alts.rows(); irow++) {
+    for (int icol = 0; icol < emap.alts.cols(); icol++) {
+      int cur_alt = emap.alts(irow, icol);
+      if (irow >= 1) {
+        auto up_alt = emap.alts(irow - 1, icol);
+        if (up_alt <= cur_alt + 1) {
+          add_edge(vertex_handles.at(irow).at(icol),
+                   vertex_handles.at(irow - 1).at(icol),
+                   unit_weight, g);
+        }
+      }
+
+      if (irow < emap.alts.rows() - 1) {
+        auto down_alt = emap.alts(irow + 1, icol);
+        if (down_alt <= cur_alt + 1) {
+          add_edge(vertex_handles.at(irow).at(icol),
+                   vertex_handles.at(irow + 1).at(icol),
+                   unit_weight, g);
+        }
+      }
+
+      if (icol >= 1) {
+        auto left_alt = emap.alts(irow, icol - 1);
+        if (left_alt <= cur_alt + 1) {
+          add_edge(vertex_handles.at(irow).at(icol),
+                   vertex_handles.at(irow).at(icol - 1),
+                   unit_weight, g);
+        }
+      }
+
+      if (icol < emap.alts.cols() - 1) {
+        auto right_alt = emap.alts(irow, icol + 1);
+        if (right_alt <= cur_alt + 1) {
+          add_edge(vertex_handles.at(irow).at(icol),
+                   vertex_handles.at(irow).at(icol + 1),
+                   unit_weight, g);
+        }
+      }
+    }
+  }
+}
 
 elevation_graph::elevation_graph (const elevation_map &emap) {
   // elevation_graph constructor.
   /* Add all vertices from the elevation matrix */
   add_vertices(emap);
   add_endpoints(emap);
+  add_edges(emap);
 }
 
 int main (int argc, char *argv[]) {
@@ -196,4 +245,12 @@ int main (int argc, char *argv[]) {
 
   /* Creating the graph of possible moves between grid cells */
   auto gmap = elevation_graph(emap);
+
+  /* Computing the shortest distance between start and all cells */
+  std::vector<vertex_desc> parents(num_vertices(gmap.g));
+  std::vector<int> distances(num_vertices(gmap.g));
+  boost::dijkstra_shortest_paths(gmap.g, gmap.start,
+    boost::predecessor_map(&parents[0]).distance_map(&distances[0]));
+  std::cout << "Shortest path from start to end: "
+            << distances[gmap.end] << std::endl;
 }
