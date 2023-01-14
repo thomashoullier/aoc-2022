@@ -1,7 +1,7 @@
 # Advent of Code 2022
 Solving the Advent of Code (AOC) 2022 puzzles. This year in C++.
 
-My goal is to learn som common C++ libraries used in solving
+My goal is to learn some common C++ libraries used in solving
 the type of problems in AOC. I tried using mostly modern C++.
 
 My rules are:

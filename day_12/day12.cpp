@@ -113,29 +113,41 @@ struct VertexProperty {
 typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS,
                               VertexProperty> Graph;
 typedef boost::graph_traits<Graph>::vertex_descriptor vertex_desc;
+// Matrix of handles to graph vertices. (I don't know if there is a smarter
+// way).
+typedef std::vector<std::vector<vertex_desc>> vert_mat;
 
 class elevation_graph {
   public:
   Graph g;
+  vert_mat vertex_handles;
   vertex_desc start;
   vertex_desc end;
   
   void add_vertices (const elevation_map &emap);
+  void add_endpoints (const elevation_map &emap);
   elevation_graph (const elevation_map &emap);
 };
 
 void elevation_graph::add_vertices (const elevation_map &emap) {
   // Add vertices to the graph (no edges yet).
+  std::vector<vertex_desc> cur_vertex_row;
   for (int irow = 0; irow < emap.alts.rows(); irow++) {
+    cur_vertex_row.clear();
     for (int icol = 0; icol < emap.alts.cols(); icol++) {
       vertex_desc node = add_vertex(g);
+      cur_vertex_row.push_back(node);
       g[node].alt = emap.alts(irow, icol);
       g[node].position = pos(irow, icol);
-      // Mark the start and end nodes.
-      if (g[node].position == emap.start) { start = node; }
-      if (g[node].position == emap.end) { end = node; }
     }
+    vertex_handles.push_back(cur_vertex_row);
   }
+}
+
+void elevation_graph::add_endpoints (const elevation_map &emap) {
+  // Add the start and end of the emap to the elevation_graph.
+  start = vertex_handles.at(emap.start.row).at(emap.start.col);
+  end = vertex_handles.at(emap.end.row).at(emap.end.col);
 }
 
 //void elevation_graph::add_edges () {
@@ -147,6 +159,7 @@ elevation_graph::elevation_graph (const elevation_map &emap) {
   // elevation_graph constructor.
   /* Add all vertices from the elevation matrix */
   add_vertices(emap);
+  add_endpoints(emap);
 }
 
 int main (int argc, char *argv[]) {
